@@ -1,0 +1,56 @@
+local function restore_movement (self)
+	self.acceleration = vmath.vector3(0, -30, 0)
+	self.speed = vmath.vector3(0, 0, 0)
+end
+
+local function on_barrier_contact (self)
+	msg.post("controller#script", "reset")
+end
+
+local function reset (self)
+	restore_movement(self)
+	go.set_position(self.start_pos)
+end
+
+local function jump (self)
+	restore_movement(self)
+	self.speed.y = 500
+end
+
+
+
+function init (self)
+	msg.post(".", "acquire_input_focus")
+
+	self.start_pos = go.get_position()
+
+	restore_movement(self)
+end
+
+function final (self)
+	msg.post(".", "release_input_focus")
+end
+
+function update (self, dt)
+	go.set_position(go.get_position() + self.speed * dt)
+
+	self.speed = self.speed + self.acceleration
+end
+
+function on_message (self, message_id, message, sender)
+	if message_id == hash("contact_point_response") then
+		if message.group == hash("barrier") then
+			on_barrier_contact(self)
+		end
+	elseif message_id == hash("reset") then
+		reset(self)
+	end
+end
+
+function on_input (self, action_id, action)
+	if action_id == hash("jump") or action_id == hash("touch") then
+		if action.pressed then
+			jump(self)
+		end
+	end
+end

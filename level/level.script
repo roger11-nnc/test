@@ -1,0 +1,78 @@
+local pieces = { "ground0"
+               , "ground1"
+               , "ground2"
+               , "ground3"
+               , "ground4"
+               , "ground5"
+               , "ground6" }
+
+local wall_min_space = 550
+local wall_heights = { 200, 350, 500 }
+
+local function ground_update (self, dt)
+	for i, w in ipairs(pieces) do
+		local pos = go.get_position(w)
+		if pos.x <= -228 then
+			pos.x = 1368 + (pos.x + 228)
+		end
+		pos.x = pos.x - self.speed * dt
+		go.set_position(pos, w)
+	end
+end
+
+local function wall_update (self, dt)
+	self.wall_cur_space = self.wall_cur_space + self.speed * dt
+
+	if self.wall_cur_space >= wall_min_space then
+		if math.random() > 0.2 then
+			self.wall_cur_space = 0
+
+			local pos = go.get_position("controller")
+			pos.x = 1600
+			pos.y = wall_heights[math.random(#wall_heights)]
+
+			local w = factory.create("#wall_factory", pos)
+			msg.post(w, "set_speed", { speed = self.speed })
+			table.insert(self.walls, w)
+		end
+	end
+end
+
+local function wall_delete (self, target)
+	for i, w in ipairs(self.walls) do
+		if w == target then
+			table.remove(self.walls, i)
+			go.delete(w)
+		end
+	end
+end
+
+local function wall_delete_all (self)
+	for i, w in ipairs(self.walls) do
+		go.delete(w)
+	end
+	self.walls = {}
+end
+
+
+
+function init (self)
+	self.speed = 0
+	self.wall_cur_space = 0
+	self.walls = {}
+end
+
+function update (self, dt)
+	ground_update(self, dt)
+	wall_update(self, dt)
+end
+
+function on_message (self, message_id, message, sender)
+	if message_id == hash("wall_delete") then
+		wall_delete(self, message.id)
+	elseif message_id == hash("reset") then
+		wall_delete_all(self)
+	elseif message_id == hash("set_speed") then
+		self.speed = message.speed
+	end
+end
